@@ -539,6 +539,7 @@ func (k *Kubernetes) UpdateKubernetesObjects(name string, service kobject.Servic
 		}
 		template.Spec.Containers[0].Ports = ports
 		template.ObjectMeta.Labels = transformer.ConfigLabelsWithNetwork(name, service.Network)
+		template.ObjectMeta.Annotations = transformer.ConfigAnnotations(service)
 
 		// Configure the image pull policy
 		if policy, err := GetImagePullPolicy(name, service.ImagePullPolicy); err != nil {
