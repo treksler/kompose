@@ -24,6 +24,7 @@ import (
 	"path"
 	"strings"
 
+	dockerlib "github.com/fsouza/go-dockerclient"
 	"github.com/kubernetes/kompose/pkg/kobject"
 	log "github.com/sirupsen/logrus"
 
@@ -103,17 +104,53 @@ func ParseVolume(volume string) (name, host, container, mode string, err error) 
 	return
 }
 
+// ParseIngressPath parse path for ingress.
+// eg. example.com/org -> example.com org
+func ParseIngressPath(url string) (string, string) {
+	if strings.Contains(url, "/") {
+		splits := strings.Split(url, "/")
+		return splits[0], "/" + splits[1]
+	}
+	return url, ""
+}
+
 func isPath(substring string) bool {
 	return strings.Contains(substring, "/") || substring == "."
 }
 
-// ConfigLabels configures label
+// ConfigLabels configures label name alone
 func ConfigLabels(name string) map[string]string {
 	return map[string]string{Selector: name}
 }
 
+// ConfigLabelsWithNetwork configures label and add Network Information in labels
+func ConfigLabelsWithNetwork(name string, net []string) map[string]string {
+
+	labels := map[string]string{}
+	labels[Selector] = name
+
+	for _, n := range net {
+		labels["io.kompose.network/"+n] = "true"
+	}
+	return labels
+	//return map[string]string{Selector: name, "Network": net}
+}
+
+// ConfigAllLabels creates labels with service nam and deploy labels
+func ConfigAllLabels(name string, service *kobject.ServiceConfig) map[string]string {
+	base := ConfigLabels(name)
+	if service.DeployLabels != nil {
+		for k, v := range service.DeployLabels {
+			base[k] = v
+		}
+	}
+	return base
+
+}
+
 // ConfigAnnotations configures annotations
 func ConfigAnnotations(service kobject.ServiceConfig) map[string]string {
+
 	annotations := map[string]string{}
 	for key, value := range service.Annotations {
 		annotations[key] = value
@@ -176,12 +213,12 @@ func formatProviderName(provider string) string {
 // EnvSort struct
 type EnvSort []api.EnvVar
 
-// returns the number of elements in the collection.
+// Len returns the number of elements in the collection.
 func (env EnvSort) Len() int {
 	return len(env)
 }
 
-// returns whether the element with index i should sort before
+// Less returns whether the element with index i should sort before
 // the element with index j.
 func (env EnvSort) Less(i, j int) bool {
 	return env[i].Name < env[j].Name
@@ -208,12 +245,21 @@ func GetComposeFileDir(inputFiles []string) (string, error) {
 }
 
 //BuildDockerImage builds docker image
-func BuildDockerImage(service kobject.ServiceConfig, name string, relativePath string) error {
-	// Get the appropriate image source and name
-	imagePath := path.Join(relativePath, path.Base(service.Build))
-	if !path.IsAbs(service.Build) {
-		imagePath = path.Join(relativePath, service.Build)
+func BuildDockerImage(service kobject.ServiceConfig, name string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
+
+	log.Debug("Build image working dir is: ", wd)
+
+	// Get the appropriate image source and name
+	imagePath := path.Join(wd, path.Base(service.Build))
+	if !path.IsAbs(service.Build) {
+		imagePath = path.Join(wd, service.Build)
+	}
+	log.Debugf("Build image context is: %s", imagePath)
+
 	if _, err := os.Stat(imagePath); err != nil {
 		return errors.Wrapf(err, "%s is not a valid path for building image %s. Check if this dir exists.", service.Build, name)
 	}
@@ -221,6 +267,17 @@ func BuildDockerImage(service kobject.ServiceConfig, name string, relativePath s
 	imageName := name
 	if service.Image != "" {
 		imageName = service.Image
+	}
+
+	buildargs := []dockerlib.BuildArg{}
+	for envName, envValue := range service.BuildArgs {
+		var value string
+		if envValue == nil {
+			value = os.Getenv(envName)
+		} else {
+			value = *envValue
+		}
+		buildargs = append(buildargs, dockerlib.BuildArg{Name: envName, Value: value})
 	}
 
 	// Connect to the Docker client
@@ -232,7 +289,7 @@ func BuildDockerImage(service kobject.ServiceConfig, name string, relativePath s
 	// Use the build struct function to build the image
 	// Build the image!
 	build := docker.Build{Client: *client}
-	err = build.BuildImage(imagePath, imageName, service.Dockerfile)
+	err = build.BuildImage(imagePath, imageName, service.Dockerfile, buildargs)
 
 	if err != nil {
 		return err

@@ -45,7 +45,9 @@ var (
 	ConvertDeploymentConfig      bool
 	ConvertReplicas              int
 	ConvertController            string
+	ConvertPushImage             bool
 	ConvertOpt                   kobject.ConvertOptions
+	ConvertYAMLIndent            int
 )
 
 var convertCmd = &cobra.Command{
@@ -74,6 +76,7 @@ var convertCmd = &cobra.Command{
 			Build:                       ConvertBuild,
 			BuildRepo:                   ConvertBuildRepo,
 			BuildBranch:                 ConvertBuildBranch,
+			PushImage:                   ConvertPushImage,
 			CreateDeploymentConfig:      ConvertDeploymentConfig,
 			EmptyVols:                   ConvertEmptyVols,
 			Volumes:                     ConvertVolumes,
@@ -84,6 +87,7 @@ var convertCmd = &cobra.Command{
 			Controller:                  strings.ToLower(ConvertController),
 			IsReplicaSetFlag:            cmd.Flags().Lookup("replicas").Changed,
 			IsDeploymentConfigFlag:      cmd.Flags().Lookup("deployment-config").Changed,
+			YAMLIndent:                  ConvertYAMLIndent,
 		}
 
 		// Validate before doing anything else. Use "bundle" if passed in.
@@ -128,18 +132,21 @@ func init() {
 
 	// Standard between the two
 	convertCmd.Flags().StringVar(&ConvertBuild, "build", "none", `Set the type of build ("local"|"build-config"(OpenShift only)|"none")`)
+	convertCmd.Flags().BoolVar(&ConvertPushImage, "push-image", true, "If we should push the docker image we built")
 	convertCmd.Flags().BoolVarP(&ConvertYaml, "yaml", "y", false, "Generate resource files into YAML format")
 	convertCmd.Flags().MarkDeprecated("yaml", "YAML is the default format now.")
 	convertCmd.Flags().MarkShorthandDeprecated("y", "YAML is the default format now.")
 	convertCmd.Flags().BoolVarP(&ConvertJSON, "json", "j", false, "Generate resource files into JSON format")
 	convertCmd.Flags().BoolVar(&ConvertStdout, "stdout", false, "Print converted objects to stdout")
-	convertCmd.Flags().StringVarP(&ConvertOut, "out", "o", "", "Specify a file name to save objects to")
+	convertCmd.Flags().StringVarP(&ConvertOut, "out", "o", "", "Specify a file name or directory to save objects to (if path does not exist, a file will be created)")
 	convertCmd.Flags().IntVar(&ConvertReplicas, "replicas", 1, "Specify the number of replicas in the generated resource spec")
-	convertCmd.Flags().StringVar(&ConvertVolumes, "volumes", "persistentVolumeClaim", `Volumes to be generated ("persistentVolumeClaim"|"emptyDir"|"hostPath")`)
+	convertCmd.Flags().StringVar(&ConvertVolumes, "volumes", "persistentVolumeClaim", `Volumes to be generated ("persistentVolumeClaim"|"emptyDir"|"hostPath" | "configMap")`)
 
 	// Deprecated commands
 	convertCmd.Flags().BoolVar(&ConvertEmptyVols, "emptyvols", false, "Use Empty Volumes. Do not generate PVCs")
 	convertCmd.Flags().MarkDeprecated("emptyvols", "emptyvols has been marked as deprecated. Use --volumes empty")
+
+	convertCmd.Flags().IntVar(&ConvertYAMLIndent, "indent", 2, "Spaces length to indent generated yaml files")
 
 	// In order to 'separate' both OpenShift and Kubernetes only flags. A custom help page is created
 	customHelp := `Usage:{{if .Runnable}}

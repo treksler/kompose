@@ -34,7 +34,7 @@ Installation methods:
   - [CentOS](/docs/installation.md#centos)
   - [Fedora](/docs/installation.md#fedora)
   - [openSUSE/SLE](/docs/installation.md#opensusesle)
-  - [macOS (Homebrew)](/docs/installation.md#macos)
+  - [macOS (Homebrew and MacPorts)](/docs/installation.md#macos)
   - [Windows](/docs/installation.md#windows)
 
 #### Binary installation
@@ -45,10 +45,10 @@ __Linux and macOS:__
 
 ```sh
 # Linux
-curl -L https://github.com/kubernetes/kompose/releases/download/v1.16.0/kompose-linux-amd64 -o kompose
+curl -L https://github.com/kubernetes/kompose/releases/download/v1.21.0/kompose-linux-amd64 -o kompose
 
 # macOS
-curl -L https://github.com/kubernetes/kompose/releases/download/v1.16.0/kompose-darwin-amd64 -o kompose
+curl -L https://github.com/kubernetes/kompose/releases/download/v1.21.0/kompose-darwin-amd64 -o kompose
 
 chmod +x kompose
 sudo mv ./kompose /usr/local/bin/kompose
@@ -56,7 +56,9 @@ sudo mv ./kompose /usr/local/bin/kompose
 
 __Windows:__
 
-Download from [GitHub](https://github.com/kubernetes/kompose/releases/download/v1.16.0/kompose-windows-amd64.exe) and add the binary to your PATH.
+Download from [GitHub](https://github.com/kubernetes/kompose/releases/download/v1.21.0/kompose-windows-amd64.exe) and add the binary to your PATH.
+
+Note: `kompose up` is not supported on windows.
 
 ## Shell autocompletion
 
@@ -117,9 +119,6 @@ __Kubernetes Community:__ As part of the Kubernetes ecosystem, we follow the Kub
 
 __Chat (Slack):__ We're fairly active on [Slack](http://slack.kubernetes.io#kompose) and you can find us in the #kompose channel.
 
-## Road Map
-
-An up-to-date roadmap of upcoming releases is located at [ROADMAP.md](/ROADMAP.md).
 
 ### Code of Conduct
 
